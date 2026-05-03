@@ -1,4 +1,5 @@
 import tkinter as tk
+import customtkinter as ctk
 from tkinter import ttk
 import math
 
@@ -12,22 +13,21 @@ class TimerCanvas(tk.Canvas):
     def draw(self, fraction, text):
         self.delete('all')
         cx = cy = self.size / 2
-        r = self.size * 0.4
+        r = self.size * 0.42
         start = -90
         extent = fraction * 360
-        # background circle
-        self.create_oval(cx - r, cy - r, cx + r, cy + r, outline='#2b2f3a', width=12)
-        # progress arc
-        self.create_arc(cx - r, cy - r, cx + r, cy + r, start=start, extent=extent, style='arc', outline='#7bd389', width=12)
+        # background circle (subtle)
+        self.create_oval(cx - r, cy - r, cx + r, cy + r, outline='#21313a', width=14)
+        # progress arc with gradient-like single color
+        self.create_arc(cx - r, cy - r, cx + r, cy + r, start=start, extent=extent, style='arc', outline='#58d19e', width=14)
         # center text
-        self.create_text(cx, cy, text=text, fill='white', font=('Segoe UI', 14, 'bold'))
+        self.create_text(cx, cy, text=text, fill='#e6f7ef', font=('Segoe UI', 16, 'bold'))
 
 
-class ExercisesFrame(ttk.Frame):
+class ExercisesFrame(ctk.CTkFrame):
     def __init__(self, parent, on_complete=None):
         super().__init__(parent)
         self.on_complete = on_complete
-        self.configure()
 
         self.exercises = [
             ('Box Breathing', 60),
@@ -36,25 +36,24 @@ class ExercisesFrame(ttk.Frame):
             ('Little Walk', 300)
         ]
 
-        left = ttk.Frame(self)
+        left = ctk.CTkFrame(self, width=220, fg_color='transparent')
         left.pack(side='left', fill='y', padx=20, pady=20)
 
-        lbl = ttk.Label(left, text='Exercises', font=('Segoe UI', 16))
+        lbl = ctk.CTkLabel(left, text='Exercises', font=('Segoe UI', 16, 'bold'))
         lbl.pack(pady=6)
 
         for name, sec in self.exercises:
-            btn = ttk.Button(left, text=f"{name} — {sec}s", command=lambda n=name, s=sec: self.start_exercise(n, s))
+            btn = ctk.CTkButton(left, text=f"{name} — {sec}s", command=lambda n=name, s=sec: self.start_exercise(n, s))
             btn.pack(fill='x', pady=6)
 
-        self.right = ttk.Frame(self)
+        self.right = ctk.CTkFrame(self, fg_color='transparent')
         self.right.pack(side='right', fill='both', expand=True, padx=20, pady=20)
 
-        self.canvas = TimerCanvas(self.right, size=260, bg='#151722')
+        self.canvas = TimerCanvas(self.right, size=260, bg='#0b0f14')
         self.canvas.pack(pady=30)
 
         self.current = None
         self._running = False
-
     def start_exercise(self, name, seconds):
         self.current = {'name': name, 'total': seconds, 'left': seconds}
         if not self._running:

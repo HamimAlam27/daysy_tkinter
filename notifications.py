@@ -1,4 +1,5 @@
 import tkinter as tk
+import customtkinter as ctk
 from tkinter import ttk
 
 try:
@@ -39,41 +40,52 @@ class Notifier:
         print(f"NOTIFICATION: {title} - {msg}")
 
     def _show_action_window(self, title, msg, on_take, on_ignore):
-        win = tk.Toplevel(self.root)
+        # Prefer CTkToplevel for consistent styling when possible
+        try:
+            win = ctk.CTkToplevel(self.root)
+        except Exception:
+            win = tk.Toplevel(self.root)
+
         win.title(title)
         win.attributes('-topmost', True)
-        # small no-resize window
         win.resizable(False, False)
-        # make window appear above even if app is minimized
+
+        # content
         try:
-            win.attributes('-toolwindow', True)
+            lbl = ctk.CTkLabel(win, text=msg, wraplength=320)
+            lbl.pack(padx=12, pady=8)
+
+            btn_frame = ctk.CTkFrame(win, fg_color='transparent')
+            btn_frame.pack(padx=8, pady=8)
+
+            def _take():
+                try:
+                    if on_take:
+                        on_take()
+                finally:
+                    win.destroy()
+
+            def _ignore():
+                try:
+                    if on_ignore:
+                        on_ignore()
+                finally:
+                    win.destroy()
+
+            take_btn = ctk.CTkButton(btn_frame, text='Take break', command=_take, fg_color='#3fb57e')
+            ignore_btn = ctk.CTkButton(btn_frame, text='Ignore', command=_ignore, fg_color='transparent')
+            take_btn.pack(side='left', padx=6)
+            ignore_btn.pack(side='left', padx=6)
         except Exception:
-            pass
-
-        lbl = ttk.Label(win, text=msg, padding=8)
-        lbl.pack(padx=12, pady=8)
-
-        btn_frame = ttk.Frame(win)
-        btn_frame.pack(padx=8, pady=8)
-
-        def _take():
-            try:
-                if on_take:
-                    on_take()
-            finally:
-                win.destroy()
-
-        def _ignore():
-            try:
-                if on_ignore:
-                    on_ignore()
-            finally:
-                win.destroy()
-
-        take_btn = ttk.Button(btn_frame, text='Take break', command=_take)
-        ignore_btn = ttk.Button(btn_frame, text='Ignore', command=_ignore)
-        take_btn.pack(side='left', padx=6)
-        ignore_btn.pack(side='left', padx=6)
+            # fallback to ttk widgets
+            lbl = ttk.Label(win, text=msg, padding=8)
+            lbl.pack(padx=12, pady=8)
+            btn_frame = ttk.Frame(win)
+            btn_frame.pack(padx=8, pady=8)
+            take_btn = ttk.Button(btn_frame, text='Take break', command=lambda: (on_take() if on_take else None, win.destroy()))
+            ignore_btn = ttk.Button(btn_frame, text='Ignore', command=lambda: (on_ignore() if on_ignore else None, win.destroy()))
+            take_btn.pack(side='left', padx=6)
+            ignore_btn.pack(side='left', padx=6)
 
         # place near bottom-right of screen
         try:

@@ -1,6 +1,7 @@
 import threading
 import time
 import tkinter as tk
+import customtkinter as ctk
 from tkinter import ttk
 import os
 import json
@@ -13,47 +14,60 @@ from notifications import Notifier
 
 APP_DATA = os.path.join(os.path.expanduser('~'), '.microbreak_data.json')
 
-class App(tk.Tk):
+class App(ctk.CTk):
     def __init__(self):
+        ctk.set_appearance_mode('dark')
+        ctk.set_default_color_theme('dark-blue')
+
         super().__init__()
         self.title('MicroBreak — Intelligent Breaks')
         self.geometry('900x600')
-        self.configure(bg='#1f2430')
 
         self.notifier = Notifier(self)
 
-        self.style = ttk.Style(self)
-        self.style.theme_use('clam')
-        self.style.configure('Sidebar.TFrame', background='#111217')
-        self.style.configure('Main.TFrame', background='#151722')
-        self.style.configure('TButton', padding=6)
-
+        # appearance tweaks
         self._create_layout()
 
         # session_limit_seconds set to 10s for testing break suggestion
         self.monitor = ActivityMonitor(on_break_suggested=self._on_break_suggested,
-                           stats_path=APP_DATA,
-                           session_limit_seconds=10)
+                                       stats_path=APP_DATA,
+                                       session_limit_seconds=10)
         self.monitor_thread = None
 
     def _create_layout(self):
-        container = ttk.Frame(self)
+        container = ctk.CTkFrame(self, corner_radius=0)
         container.pack(fill='both', expand=True)
 
-        sidebar = ttk.Frame(container, width=220, style='Sidebar.TFrame')
+        sidebar = ctk.CTkFrame(container, width=220, corner_radius=0)
         sidebar.pack(side='left', fill='y')
 
-        self.main = ttk.Frame(container, style='Main.TFrame')
+        self.main = ctk.CTkFrame(container, corner_radius=0)
         self.main.pack(side='right', fill='both', expand=True)
 
-        # Sidebar buttons
-        btn_home = ttk.Button(sidebar, text='Home', command=self.show_home)
-        btn_dash = ttk.Button(sidebar, text='Dashboard', command=self.show_dashboard)
-        btn_ex = ttk.Button(sidebar, text='Exercises', command=self.show_exercises)
-        btn_quit = ttk.Button(sidebar, text='Quit', command=self.destroy)
+        # Header inside main for a modern app feel
+        header = ctk.CTkFrame(self.main, height=64, corner_radius=0)
+        header.pack(side='top', fill='x')
+        title = ctk.CTkLabel(header, text='MicroBreak', font=('Segoe UI', 20, 'bold'))
+        title.pack(side='left', padx=16, pady=12)
+        subtitle = ctk.CTkLabel(header, text='Smart micro-breaks', font=('Segoe UI', 12))
+        subtitle.pack(side='left', padx=8, pady=16)
 
-        for b in (btn_home, btn_dash, btn_ex, btn_quit):
-            b.pack(fill='x', padx=12, pady=8)
+        # Sidebar buttons
+        # Sidebar with simple icons using CTkButtons
+        def _mk_btn(text, cmd):
+            def _wrapped():
+                try:
+                    cmd()
+                except Exception as e:
+                    print(f'Button callback error for {text}:', e)
+            btn = ctk.CTkButton(sidebar, text=text, fg_color='transparent', command=_wrapped)
+            btn.pack(fill='x', padx=12, pady=10)
+            return btn
+
+        btn_home = _mk_btn('🏠  Home', self.show_home)
+        btn_dash = _mk_btn('📊  Dashboard', self.show_dashboard)
+        btn_ex = _mk_btn('🏃  Exercises', self.show_exercises)
+        btn_quit = _mk_btn('⏻  Quit', self.destroy)
 
         # Pages
         self.pages = {}
@@ -64,30 +78,40 @@ class App(tk.Tk):
         self.show_home()
 
     def _build_home(self, parent):
-        f = ttk.Frame(parent)
-        lbl = ttk.Label(f, text='Welcome to MicroBreak', font=('Segoe UI', 18))
-        lbl.pack(pady=20)
+        f = ctk.CTkFrame(parent, corner_radius=8)
+
+        # Card for home content
+        card = ctk.CTkFrame(f, corner_radius=8, fg_color='#0f1418')
+        card.pack(padx=20, pady=24, fill='x')
+
+        lbl = ctk.CTkLabel(card, text='Welcome to MicroBreak', font=('Segoe UI', 20, 'bold'))
+        lbl.pack(anchor='w', pady=(6,0), padx=8)
 
         self.status_var = tk.StringVar(value='Monitor stopped')
-        status = ttk.Label(f, textvariable=self.status_var)
-        status.pack(pady=6)
+        status = ctk.CTkLabel(card, textvariable=self.status_var, text_color='#9aa6b2', font=('Segoe UI', 11))
+        status.pack(anchor='w', pady=(6,0), padx=8)
 
-        self.start_btn = ttk.Button(f, text='Start Monitor', command=self.toggle_monitor)
-        self.start_btn.pack(pady=10)
+        btn_row = ctk.CTkFrame(card, fg_color='transparent')
+        btn_row.pack(anchor='w', pady=12, padx=8)
+
+        def _start_wrapped():
+            try:
+                self.toggle_monitor()
+            except Exception as e:
+                print('Start button error:', e)
+
+        self.start_btn = ctk.CTkButton(btn_row, text='Start Monitor', fg_color='#3fb57e', command=_start_wrapped)
+        self.start_btn.pack(side='left')
 
         self.elapsed_var = tk.StringVar(value='Elapsed: 0s')
-        elapsed_lbl = ttk.Label(f, textvariable=self.elapsed_var)
-        elapsed_lbl.pack(pady=6)
+        elapsed_lbl = ctk.CTkLabel(btn_row, textvariable=self.elapsed_var, text_color='#9aa6b2', font=('Segoe UI', 11))
+        elapsed_lbl.pack(side='left', padx=14)
 
         # Ignored breaks counter
         self.ignored_var = tk.IntVar(value=0)
-        ignored_lbl = ttk.Label(f, textvariable=tk.StringVar(value='Ignored breaks: 0'))
-        # create a dynamic label that reads from ignored_var
-        def _ignored_text():
-            return f'Ignored breaks: {self.ignored_var.get()}'
-        self._ignored_label_var = tk.StringVar(value=_ignored_text())
-        ignored_lbl = ttk.Label(f, textvariable=self._ignored_label_var)
-        ignored_lbl.pack(pady=6)
+        self._ignored_label_var = tk.StringVar(value=f'Ignored breaks: {self.ignored_var.get()}')
+        ignored_lbl = ctk.CTkLabel(card, textvariable=self._ignored_label_var, text_color='#9aa6b2', font=('Segoe UI', 11))
+        ignored_lbl.pack(anchor='w', pady=(6,0), padx=8)
 
         # load initial ignored count
         self._load_ignored_count()
@@ -115,12 +139,12 @@ class App(tk.Tk):
     def toggle_monitor(self):
         if self.monitor.running:
             self.monitor.stop()
-            self.start_btn.config(text='Start Monitor')
+            self.start_btn.configure(text='Start Monitor')
             self.status_var.set('Monitor stopped')
             self._start_time = None
         else:
             self.monitor.start()
-            self.start_btn.config(text='Stop Monitor')
+            self.start_btn.configure(text='Stop Monitor')
             self.status_var.set('Monitor running')
             self._start_time = time.time()
             self._update_elapsed()
